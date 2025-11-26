@@ -114,7 +114,7 @@ export const fetchMarketData = async (
   // ==========================================
   // STEP 2: Fetch Targeted Options
   // ==========================================
-  const targetStrikes = getTargetStrikes(currentPrice); // This helper might need update for Calls, but standard is fine for now
+  const targetStrikes = getTargetStrikes(currentPrice); 
   const strikeList = targetStrikes.join(", ");
 
   // Use the full list of strategies for options
@@ -196,6 +196,46 @@ export const fetchVolatilityData = async (apiKey: string): Promise<VolatilityMet
       // Prompt to specifically fetch VXN (Cboe Nasdaq-100 Volatility Index)
       // We need Current Price, 52 Week High, and 52 Week Low
       const prompt = `
-        Search Query: ^VXN index price 52 week range Yahoo Finance Google Finance
+        Search Query: ^VXN index price 52 week range CBOE Nasdaq Volatility
         
-        Task: Find the current price and the 52-week High/Low range for the Cboe
+        Task: Find the current price and the 52-week High/Low range for the Cboe Nasdaq-100 Volatility Index (^VXN).
+        
+        Return JSON ONLY:
+        {
+            "currentIV": <number>,
+            "highIV": <number>,
+            "lowIV": <number>
+        }
+      `;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: { tools: [{ googleSearch: {} }] },
+      });
+
+      const data = extractJson(response.text);
+      
+      if (data && data.currentIV) {
+          // If high/low are missing, use rough defaults or estimates if possible
+          const high = data.highIV || 35; 
+          const low = data.lowIV || 15;
+          
+          const rank = calculateIVRank(data.currentIV, low, high);
+          const status = getIVStatus(rank);
+          
+          return {
+              currentIV: data.currentIV,
+              highIV: high,
+              lowIV: low,
+              rank,
+              status: status.msg,
+              statusColor: status.color
+          };
+      }
+      return null;
+  } catch (e) {
+      console.warn("Vol fetch failed", e);
+      return null;
+  }
+};
