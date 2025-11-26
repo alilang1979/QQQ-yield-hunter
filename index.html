@@ -4,7 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QQQ Yield Hunter</title>
+    
+    <!-- 
+      注意: tailwindcss CDN 在控制台会有 "should not be used in production" 的警告。
+      在无构建步骤(No-Build)的静态架构中，这是预期的且是必须的。它在 GitHub Pages 上可以正常工作。
+    -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#1e293b',
+                900: '#0f172a',
+                950: '#020617',
+              }
+            }
+          }
+        }
+      }
+    </script>
+
     <style>
       /* Custom scrollbar for a sleek financial app look */
       ::-webkit-scrollbar {
@@ -26,20 +47,27 @@
         color: #e2e8f0;
       }
     </style>
-  <script type="importmap">
+    
+    <!-- 
+      切换到公共 CDN (esm.sh) 以支持 GitHub Pages 部署。
+      之前的 aistudiocdn 可能只能在编辑器内部访问。
+    -->
+    <script type="importmap">
 {
   "imports": {
-    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "recharts": "https://esm.sh/recharts@2.12.2?external=react,react-dom",
+    "@google/genai": "https://esm.sh/@google/genai@0.1.1",
+    "@phosphor-icons/react": "https://esm.sh/@phosphor-icons/react@2.0.15?external=react,react-dom",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@phosphor-icons/react": "https://aistudiocdn.com/@phosphor-icons/react@^2.1.10"
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
