@@ -1,0 +1,5 @@
+{
+  "name": "QQQ Yield Hunter",
+  "description": "A specialized tool for option sellers to analyze annualized returns on Cash-Secured Puts for NASDAQ:QQQ using real-time market data retrieval via Gemini.",
+  "requestFramePermissions": []
+}
