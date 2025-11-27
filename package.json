@@ -11,8 +11,8 @@
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "2.12.2",
-    "@google/genai": "0.1.1",
+    "recharts": "2.12.7",
+    "@google/genai": "latest",
     "@phosphor-icons/react": "2.0.15"
   },
   "devDependencies": {
