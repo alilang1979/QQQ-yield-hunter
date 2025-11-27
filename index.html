@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QQQ Yield Hunter</title>
+    <title>QQQ Yield Hunter - 期权卖方策略分析工具</title>
     <link rel="icon" href="data:,">
+    <meta name="description" content="专为美股期权卖方(Wheel Strategy)打造的分析工具。实时计算 Cash-Secured Put, Credit Spread 和 Covered Call 的年化收益率，寻找 QQQ 最佳入场点。">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,18 +19,24 @@
                 900: '#0f172a',
                 950: '#020617',
               }
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'Menlo', 'monospace'],
             }
           }
         }
       }
     </script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
+      body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; }
       ::-webkit-scrollbar { width: 8px; height: 8px; }
       ::-webkit-scrollbar-track { background: #0f172a; }
       ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #475569; }
-      body { background-color: #020617; color: #e2e8f0; }
     </style>
     
     <script type="importmap">

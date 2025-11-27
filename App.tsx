@@ -6,6 +6,7 @@ import { calculateOptionMetrics, formatCurrency, getNextFriday } from './utils/c
 import { OptionTable } from './components/OptionTable.tsx';
 import { YieldChart } from './components/YieldChart.tsx';
 import { VolatilityCard } from './components/VolatilityCard.tsx';
+import { StrategyGuide } from './components/StrategyGuide.tsx';
 import { 
   CircleNotch, 
   Plus, 
@@ -27,7 +28,8 @@ import {
   ArrowCounterClockwise, 
   Bug, 
   Code,
-  Sparkle
+  Sparkle,
+  TrendUp
 } from '@phosphor-icons/react';
 
 const QQQ_DEFAULT_PRICE = 500; // Fallback
@@ -113,9 +115,7 @@ export default function App() {
     if (savedPoly) setPolygonKey(savedPoly);
     if (savedGemini) setGeminiKey(savedGemini);
 
-    if (!savedPoly && !savedGemini) {
-        setShowSettings(true);
-    }
+    // Don't auto-show settings, let the Hero section guide them.
   }, []);
 
   const handleSaveKey = (type: 'polygon' | 'gemini', val: string) => {
@@ -216,6 +216,9 @@ export default function App() {
         setOptions(newRows);
         setStatus(FetchStatus.SUCCESS);
         if (errorMsg.includes("警告")) setErrorMsg(""); 
+        
+        // Auto-hide guide when data loads successfully to save space
+        setShowGuide(false);
       } else {
         setStatus(FetchStatus.SUCCESS); 
         setErrorMsg("获取到价格，但未找到期权链数据。请尝试更换日期或手动输入。");
@@ -273,368 +276,317 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500/30 pb-20">
       {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20 backdrop-blur-md bg-opacity-80">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-blue-900/20">
+            <div className="h-9 w-9 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-lg flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-blue-900/20">
               Q
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-3">
-                <span>QQQ Yield Hunter</span>
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/30 px-2 py-1 rounded-md border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                  v1.3
+              <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                QQQ Yield Hunter
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  PRO
                 </span>
               </h1>
-              <p className="text-xs text-slate-400">Cash-Secured Put & Credit Spread 分析工具</p>
             </div>
           </div>
           
           <div className="flex items-center gap-6">
-             <div className="text-right hidden sm:block">
-                 <p className="text-[10px] text-slate-400 uppercase tracking-wider">QQQ 当前价格</p>
-                 {status === FetchStatus.LOADING && currentPrice === 0 ? (
-                     <div className="h-6 w-24 bg-slate-800 animate-pulse rounded mt-1"></div>
-                 ) : (
-                     <p className="text-2xl font-mono font-bold text-white">
-                       {currentPrice > 0 ? formatCurrency(currentPrice) : "---"}
+             {currentPrice > 0 && (
+                 <div className="text-right hidden sm:block animate-in fade-in">
+                     <p className="text-[10px] text-slate-400 uppercase tracking-wider">QQQ Price</p>
+                     <p className="text-xl font-mono font-bold text-white leading-none">
+                       {formatCurrency(currentPrice)}
                      </p>
-                 )}
-             </div>
+                 </div>
+             )}
              <button 
                 onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded-full transition-colors ${showSettings || (!polygonKey && !geminiKey) ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                title="设置 / API Key"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all border ${showSettings || (!polygonKey && !geminiKey) ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/50' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'}`}
              >
-                <Gear size={24} weight={showSettings ? "fill" : "regular"} />
+                <Gear size={18} weight={showSettings ? "fill" : "regular"} />
+                <span className="text-xs font-medium hidden sm:inline">Settings</span>
              </button>
           </div>
         </div>
       </header>
 
-      {/* Settings Panel */}
+      {/* Hero / Welcome Section (Only show if no data loaded yet) */}
+      {status === FetchStatus.IDLE && options.length === 0 && (
+          <div className="bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800 py-12 px-4">
+              <div className="max-w-3xl mx-auto text-center space-y-4">
+                  <h2 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-400">
+                      让您的闲置资金为您“打工”
+                  </h2>
+                  <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                      专为美股期权卖方 (Wheel Strategy) 打造的收益分析工具。
+                      实时计算 Cash-Secured Put 和 Credit Spread 的年化回报率，助您发现纳斯达克 (QQQ) 的最佳入场点。
+                  </p>
+              </div>
+          </div>
+      )}
+
+      {/* Settings Panel Modal */}
       {showSettings && (
-          <div className="bg-slate-900 border-b border-slate-800 animate-in slide-in-from-top-2 duration-200 shadow-2xl">
-              <div className="max-w-7xl mx-auto px-4 py-8">
-                  <div className="flex justify-between items-start mb-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+             <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
                       <div>
                         <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                            <Key size={24} className="text-blue-400"/> 
                            API 配置 (Settings)
                         </h2>
-                        <p className="text-sm text-slate-400 mt-1">输入 API Key 以获取实时数据。Key 仅保存在您的本地浏览器中。</p>
                       </div>
                       <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white p-1 hover:bg-slate-800 rounded"><X size={24}/></button>
                   </div>
                   
-                  {/* Polygon Section */}
-                  <div className="bg-slate-950 p-6 rounded-xl border border-blue-900/30 max-w-3xl shadow-inner mb-6">
-                      <label className="block text-sm font-bold text-blue-400 mb-3">Polygon.io API Key (数据首选)</label>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                          <input 
-                            type="text" 
-                            value={polygonKey}
-                            onChange={(e) => handleSaveKey('polygon', e.target.value)}
-                            placeholder="例如: Vc2_xxxxxxxxxxxxxxxxxxxx"
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none font-mono text-sm shadow-inner"
-                          />
-                          <button 
-                             onClick={handleTestKey}
-                             disabled={isVerifying || !polygonKey}
-                             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
-                          >
-                             {isVerifying ? <CircleNotch className="animate-spin"/> : "测试 Key"}
-                          </button>
-                      </div>
-                      
-                      {verificationStatus && (
-                         <div className={`mt-3 p-2 rounded text-sm flex items-center gap-2 ${verificationStatus.valid ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}`}>
-                            {verificationStatus.valid ? <CheckCircle size={18} weight="fill" /> : <WarningCircle size={18} weight="fill" />}
-                            <span>{verificationStatus.valid ? "验证成功！API Key 有效。" : verificationStatus.msg || "Key 无效"}</span>
-                         </div>
-                      )}
+                  <div className="p-6 space-y-6">
+                      <p className="text-sm text-slate-400">为了获取实时期权链数据，您需要配置 API Key。Key 仅保存在您的本地浏览器中，不会上传服务器。</p>
 
-                      <div className="mt-4 flex flex-col sm:flex-row gap-4 text-xs text-slate-500 items-start sm:items-center bg-slate-900/50 p-3 rounded border border-slate-800">
-                          <Info size={24} className="text-blue-500 shrink-0" />
-                          <span>
-                            <strong>没有 Key?</strong> 注册 <a href="https://polygon.io" target="_blank" className="text-blue-400 hover:underline font-medium">polygon.io</a> 免费账号。
-                            推荐使用 Polygon 获取精准期权链。
-                          </span>
-                      </div>
-                  </div>
+                      {/* Polygon Section */}
+                      <div className="bg-slate-950 p-5 rounded-xl border border-blue-900/30 shadow-inner">
+                          <label className="block text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                              Polygon.io API Key (推荐)
+                          </label>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                              <input 
+                                type="text" 
+                                value={polygonKey}
+                                onChange={(e) => handleSaveKey('polygon', e.target.value)}
+                                placeholder="例如: Vc2_xxxxxxxxxxxxxxxxxxxx"
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none font-mono text-sm shadow-inner"
+                              />
+                              <button 
+                                 onClick={handleTestKey}
+                                 disabled={isVerifying || !polygonKey}
+                                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+                              >
+                                 {isVerifying ? <CircleNotch className="animate-spin"/> : "测试 Key"}
+                              </button>
+                          </div>
+                          
+                          {verificationStatus && (
+                             <div className={`mt-3 p-2 rounded text-sm flex items-center gap-2 ${verificationStatus.valid ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}`}>
+                                {verificationStatus.valid ? <CheckCircle size={18} weight="fill" /> : <WarningCircle size={18} weight="fill" />}
+                                <span>{verificationStatus.valid ? "验证成功！API Key 有效。" : verificationStatus.msg || "Key 无效"}</span>
+                             </div>
+                          )}
 
-                  {/* Gemini Section */}
-                  <div className="bg-slate-950 p-6 rounded-xl border border-purple-900/30 max-w-3xl shadow-inner">
-                      <label className="block text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
-                        <Sparkle size={16} weight="fill"/>
-                        Gemini API Key (AI 搜索 & 波动率)
-                      </label>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                          <input 
-                            type="password"
-                            value={geminiKey}
-                            onChange={(e) => handleSaveKey('gemini', e.target.value)}
-                            placeholder="例如: AIzaSy..."
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none font-mono text-sm shadow-inner"
-                          />
+                          <div className="mt-3 text-xs text-slate-500">
+                             没有 Key? 前往 <a href="https://polygon.io" target="_blank" className="text-blue-400 hover:underline">polygon.io</a> 注册免费账号 (Free Tier 每日 5 次请求)。
+                          </div>
                       </div>
 
-                      <div className="mt-4 flex flex-col sm:flex-row gap-4 text-xs text-slate-500 items-start sm:items-center bg-slate-900/50 p-3 rounded border border-slate-800">
-                          <Info size={24} className="text-purple-500 shrink-0" />
-                          <span>
-                            <strong>免费获取 Key:</strong> 前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-purple-400 hover:underline font-medium">Google AI Studio</a>。
-                            如果没有 Polygon Key，系统将使用 Gemini 搜索全网数据（可能会有偶发性误差）。
-                          </span>
+                      {/* Gemini Section */}
+                      <div className="bg-slate-950 p-5 rounded-xl border border-purple-900/30 shadow-inner">
+                          <label className="block text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                             Gemini API Key (备用/AI 搜索)
+                          </label>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                              <input 
+                                type="password"
+                                value={geminiKey}
+                                onChange={(e) => handleSaveKey('gemini', e.target.value)}
+                                placeholder="例如: AIzaSy..."
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none font-mono text-sm shadow-inner"
+                              />
+                          </div>
+                          <div className="mt-3 text-xs text-slate-500">
+                             免费获取 Key: <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-purple-400 hover:underline">Google AI Studio</a>。
+                             用于获取 VXN 波动率指数及作为 Polygon 的备用搜索源。
+                          </div>
                       </div>
                   </div>
                   
-                  <div className="mt-6 flex justify-end">
+                  <div className="p-6 border-t border-slate-800 flex justify-end bg-slate-900 rounded-b-2xl">
                      <button 
                         onClick={() => setShowSettings(false)}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-blue-900/20"
+                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-emerald-900/20"
                      >
-                        完成设置
+                        保存并关闭
                      </button>
                   </div>
-              </div>
+             </div>
           </div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         
-        {/* Volatility & Timing Assistant */}
-        <VolatilityCard metrics={volMetrics} isLoading={isVolLoading} />
-        
-        {/* Guide Section (Collapsible) */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
-             <button 
-                onClick={() => setShowGuide(!showGuide)}
-                className="w-full px-6 py-4 flex items-center justify-between bg-slate-900 hover:bg-slate-800 transition-colors"
-             >
-                 <div className="flex items-center gap-2 font-semibold text-slate-200">
-                     <BookOpen size={20} className="text-purple-400"/>
-                     新手指南：关于数据与策略
-                 </div>
-                 {showGuide ? <CaretUp size={16}/> : <CaretDown size={16}/>}
-             </button>
-             
-             {showGuide && (
-                 <div className="p-6 grid md:grid-cols-2 gap-8 text-sm text-slate-400 bg-slate-900/30">
-                     <div>
-                         <h3 className="text-slate-200 font-bold mb-2">取数逻辑 (API Logic)</h3>
-                         <ul className="space-y-2 list-disc list-inside">
-                             <li>
-                                 <strong className="text-emerald-400">Snapshot 模式 (推荐):</strong> 
-                                 配置 Polygon API Key 后，直接拉取整个期权链。数据全、速度快、包含 Greeks。
-                             </li>
-                             <li>
-                                 <strong className="text-purple-400">AI 搜索模式:</strong> 
-                                 配置 Gemini API Key 后，使用 Google Search 寻找期权数据。作为 Polygon 的免费替代方案。
-                             </li>
-                         </ul>
-                     </div>
-                     <div>
-                         <h3 className="text-slate-200 font-bold mb-2">策略说明 (Strategy)</h3>
-                         <div className="space-y-4">
-                             <div>
-                                 <strong className="text-emerald-400 block mb-1">1. Cash-Secured Put (CSP):</strong>
-                                 <p className="mb-1">准备全额现金，卖出 Put。适合想赚利息或低价抄底的投资者。</p>
-                             </div>
-                             <div>
-                                 <strong className="text-blue-400 block mb-1">2. Put Credit Spread (PCS):</strong>
-                                 <p className="mb-1">卖出高价 Put，买入低价 Put 保护。最大亏损被锁定在“价差宽度”内，资金利用率高。</p>
-                             </div>
-                             <div>
-                                 <strong className="text-purple-400 block mb-1">3. Covered Call (CC):</strong>
-                                 <p className="mb-1">持有 100 股正股，卖出 Call。适合被套牢后赚取额外利息解套，或长期持仓增强收益。</p>
-                             </div>
+        {/* Top Section: Volatility & Guide Toggle */}
+        <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+                 <VolatilityCard metrics={volMetrics} isLoading={isVolLoading} />
+            </div>
+            <div className="flex flex-col gap-4">
+                 <button 
+                    onClick={() => setShowGuide(!showGuide)}
+                    className="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl p-4 flex items-center justify-between group transition-all"
+                 >
+                     <div className="flex items-center gap-3">
+                         <div className="p-2 bg-blue-900/20 rounded-lg text-blue-400 group-hover:bg-blue-900/30 transition-colors">
+                             <BookOpen size={24}/>
+                         </div>
+                         <div className="text-left">
+                             <div className="font-bold text-slate-200">新手指南 & 策略</div>
+                             <div className="text-xs text-slate-500">查看教程、术语表</div>
                          </div>
                      </div>
+                     {showGuide ? <CaretUp size={20} className="text-slate-500"/> : <CaretDown size={20} className="text-slate-500"/>}
+                 </button>
+                 
+                 {/* Status Indicator Panel */}
+                 <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex-1 flex flex-col justify-center">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-semibold text-slate-500 uppercase">System Status</span>
+                          <span className={`h-2 w-2 rounded-full ${polygonKey || geminiKey ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`}></span>
+                      </div>
+                      <div className="text-sm text-slate-300">
+                          {polygonKey ? "Polygon API 就绪" : geminiKey ? "Gemini AI 就绪" : "未配置数据源"}
+                      </div>
                  </div>
-             )}
+            </div>
         </div>
 
-        {/* Controls Section */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Search Card */}
-            <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col">
-                <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <MagnifyingGlass size={20} className="text-blue-400" />
-                        行情与策略 (Setup)
-                    </h2>
-                    
-                    {/* Strategy Switcher */}
-                    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-                        <button 
-                            onClick={() => setStrategy('CSP')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all ${strategy === 'CSP' ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
-                        >
-                            <Coins size={14} /> CSP
-                        </button>
-                        <button 
-                            onClick={() => setStrategy('PCS')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all ${strategy === 'PCS' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
-                        >
-                            <Stack size={14} /> Spread
-                        </button>
-                        <button 
-                            onClick={() => setStrategy('CC')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all ${strategy === 'CC' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
-                        >
-                            <ArrowCounterClockwise size={14} /> Covered Call
-                        </button>
-                    </div>
-                </div>
+        {/* Collapsible Strategy Guide */}
+        {showGuide && <StrategyGuide />}
 
-                <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4 items-end">
-                        <div className="flex-1 w-full">
-                            <label className="block text-sm font-medium text-slate-400 mb-1">选择到期日 (Expiration)</label>
+        {/* Controls Section */}
+        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-1 shadow-sm overflow-hidden">
+             {/* Strategy Selector Tab Bar */}
+             <div className="flex border-b border-slate-800 bg-slate-950/30 overflow-x-auto">
+                <button 
+                    onClick={() => setStrategy('CSP')}
+                    className={`flex-1 py-3 px-4 text-sm font-semibold flex items-center justify-center gap-2 transition-all whitespace-nowrap
+                        ${strategy === 'CSP' ? 'text-emerald-400 bg-slate-800/50 border-b-2 border-emerald-500' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    <Coins size={16} /> Cash-Secured Put
+                </button>
+                <button 
+                    onClick={() => setStrategy('PCS')}
+                    className={`flex-1 py-3 px-4 text-sm font-semibold flex items-center justify-center gap-2 transition-all whitespace-nowrap
+                        ${strategy === 'PCS' ? 'text-blue-400 bg-slate-800/50 border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    <Stack size={16} /> Put Credit Spread
+                </button>
+                <button 
+                    onClick={() => setStrategy('CC')}
+                    className={`flex-1 py-3 px-4 text-sm font-semibold flex items-center justify-center gap-2 transition-all whitespace-nowrap
+                        ${strategy === 'CC' ? 'text-purple-400 bg-slate-800/50 border-b-2 border-purple-500' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    <ArrowCounterClockwise size={16} /> Covered Call
+                </button>
+             </div>
+
+             <div className="p-6 grid lg:grid-cols-4 gap-6">
+                {/* Left: Input Controls */}
+                <div className="lg:col-span-3 space-y-5">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                到期日 (Expiration)
+                            </label>
                             <input 
                                 type="date" 
                                 value={targetDate}
                                 onChange={(e) => setTargetDate(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono"
                             />
                         </div>
 
-                        {/* Extra Input: Spread Width (Only for PCS) */}
+                        {/* Conditional Inputs */}
                         {strategy === 'PCS' && (
-                            <div className="w-full sm:w-32 animate-in fade-in slide-in-from-left-2">
-                                <label className="block text-sm font-medium text-blue-400 mb-1">价差宽度</label>
+                            <div className="sm:w-40 animate-in fade-in slide-in-from-left-2">
+                                <label className="block text-xs font-bold text-blue-500 uppercase tracking-wider mb-1.5">价差宽度 ($)</label>
                                 <select 
                                     value={spreadWidth}
                                     onChange={(e) => setSpreadWidth(Number(e.target.value))}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-white outline-none focus:border-blue-500"
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-3 text-white outline-none focus:border-blue-500 font-mono"
                                 >
-                                    <option value={1}>$1 (极窄)</option>
-                                    <option value={5}>$5 (标准)</option>
-                                    <option value={10}>$10 (推荐)</option>
-                                    <option value={25}>$25 (宽距)</option>
+                                    <option value={1}>$1</option>
+                                    <option value={5}>$5 (Standard)</option>
+                                    <option value={10}>$10 (Recommended)</option>
+                                    <option value={25}>$25</option>
                                 </select>
                             </div>
                         )}
 
-                        {/* Extra Input: Cost Basis (Only for CC) */}
                         {strategy === 'CC' && (
-                            <div className="w-full sm:w-40 animate-in fade-in slide-in-from-left-2">
-                                <label className="block text-sm font-medium text-purple-400 mb-1">持仓成本 ($)</label>
+                            <div className="sm:w-48 animate-in fade-in slide-in-from-left-2">
+                                <label className="block text-xs font-bold text-purple-500 uppercase tracking-wider mb-1.5">持仓成本 ($)</label>
                                 <input 
                                     type="number"
                                     value={stockCostBasis}
                                     onChange={(e) => setStockCostBasis(e.target.value)}
-                                    placeholder="例如: 495"
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:border-purple-500"
+                                    placeholder="e.g. 495.50"
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-purple-500 font-mono"
                                 />
                             </div>
                         )}
-
-                        <button 
-                            onClick={handleFetchData}
-                            disabled={status === FetchStatus.LOADING}
-                            className={`px-6 py-2.5 rounded-lg font-semibold text-white shadow-lg transition-all flex items-center justify-center gap-2 min-w-[160px] sm:min-w-[200px]
-                                ${status === FetchStatus.LOADING 
-                                    ? 'bg-slate-700 cursor-not-allowed' 
-                                    : polygonKey 
-                                        ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-emerald-900/20' 
-                                        : 'bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-blue-900/20'}`}
-                        >
-                            {status === FetchStatus.LOADING ? (
-                                <><CircleNotch size={20} className="animate-spin" /> {scanMessage}</>
-                            ) : (
-                                <><ChartLineUp size={20} /> {polygonKey ? "获取数据" : "AI 搜索"}</>
-                            )}
-                        </button>
-                    </div>
-                </div>
-                
-                {/* Status / Error Messages */}
-                {errorMsg && (
-                    <div className={`mt-4 p-3 rounded-lg text-sm flex items-start gap-2 ${errorMsg.includes("警告") ? "bg-yellow-900/20 border border-yellow-900/50 text-yellow-400" : "bg-red-900/20 border border-red-900/50 text-red-400"}`}>
-                        {errorMsg.includes("警告") ? <Warning size={18} className="shrink-0 mt-0.5" /> : <WarningCircle size={18} className="shrink-0 mt-0.5" />}
-                        <span>{errorMsg}</span>
-                    </div>
-                )}
-                
-                <div className="mt-auto">
-                    {sources.length > 0 && (
-                        <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex flex-wrap gap-2 items-center">
-                                <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                                    <LinkIcon size={12} /> 来源:
-                                </p>
-                                {getSourceBadge()}
-                                {sources.map((s, i) => (
-                                <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" 
-                                    className="px-2 py-1 rounded bg-slate-800 text-[10px] text-blue-400 hover:text-blue-300 hover:bg-slate-700 transition-colors truncate max-w-[150px] border border-slate-700">
-                                    {s.title || "Web Result"}
-                                </a>
-                                ))}
-                            </div>
-                            
-                            <button 
-                                onClick={() => setShowDebug(!showDebug)}
-                                className="text-[10px] text-slate-600 hover:text-slate-400 flex items-center gap-1"
+                        
+                        <div className="sm:w-auto flex items-end">
+                             <button 
+                                onClick={handleFetchData}
+                                disabled={status === FetchStatus.LOADING}
+                                className={`w-full sm:w-auto h-[46px] px-8 rounded-lg font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap
+                                    ${status === FetchStatus.LOADING 
+                                        ? 'bg-slate-700 cursor-not-allowed' 
+                                        : polygonKey 
+                                            ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-emerald-900/20' 
+                                            : 'bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-blue-900/20'}`}
                             >
-                                <Bug size={12}/> {showDebug ? "隐藏调试" : "查看原始数据"}
+                                {status === FetchStatus.LOADING ? (
+                                    <><CircleNotch size={20} className="animate-spin" /> {scanMessage}</>
+                                ) : (
+                                    <><MagnifyingGlass size={20} weight="bold"/> {polygonKey ? "获取数据" : "AI 搜索"}</>
+                                )}
                             </button>
                         </div>
-                    )}
+                    </div>
                     
-                    {!polygonKey && !geminiKey && (
-                        <p className="mt-4 text-xs text-slate-500 leading-relaxed">
-                            <Info size={12} className="inline mr-1"/>
-                            <strong>提示:</strong> 请配置 API Key 以开始使用。
-                        </p>
+                    {errorMsg && (
+                        <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${errorMsg.includes("警告") ? "bg-yellow-900/20 border border-yellow-900/50 text-yellow-400" : "bg-red-900/20 border border-red-900/50 text-red-400"}`}>
+                            {errorMsg.includes("警告") ? <Warning size={18} className="shrink-0 mt-0.5" /> : <WarningCircle size={18} className="shrink-0 mt-0.5" />}
+                            <span>{errorMsg}</span>
+                        </div>
                     )}
                 </div>
-            </div>
 
-            {/* Manual Entry Card */}
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
-                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Plus size={20} className="text-emerald-400" />
-                    手动添加 (Manual)
-                </h2>
-                <form onSubmit={handleAddManual} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">行权价 (Strike $)</label>
-                        <input 
-                            type="number" 
-                            step="0.01"
-                            placeholder="例如: 490"
-                            value={manualStrike}
-                            onChange={(e) => setManualStrike(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-emerald-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">权利金 (Premium $)</label>
-                        <input 
-                            type="number" 
-                            step="0.01"
-                            placeholder="例如: 2.50"
-                            value={manualPremium}
-                            onChange={(e) => setManualPremium(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-emerald-500 outline-none"
-                        />
-                    </div>
-                    <button 
-                        type="submit"
-                        disabled={!currentPrice}
-                        className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded-lg transition-colors border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        添加数据行
-                    </button>
-                    {!currentPrice && <p className="text-xs text-slate-500 text-center">请先获取 QQQ 价格</p>}
-                </form>
-            </div>
+                {/* Right: Manual Add (Compact) */}
+                <div className="lg:col-span-1 border-t lg:border-t-0 lg:border-l border-slate-800 pt-4 lg:pt-0 lg:pl-6 flex flex-col justify-center">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
+                        <Plus size={12}/> 手动补录数据
+                    </h4>
+                    <form onSubmit={handleAddManual} className="flex flex-col gap-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <input 
+                                type="number" step="0.01" placeholder="Strike" 
+                                value={manualStrike} onChange={(e) => setManualStrike(e.target.value)}
+                                className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-slate-500 outline-none"
+                            />
+                            <input 
+                                type="number" step="0.01" placeholder="Premium" 
+                                value={manualPremium} onChange={(e) => setManualPremium(e.target.value)}
+                                className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-slate-500 outline-none"
+                            />
+                        </div>
+                        <button 
+                            type="submit"
+                            disabled={!currentPrice}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded transition-colors border border-slate-700"
+                        >
+                            添加
+                        </button>
+                    </form>
+                </div>
+             </div>
         </section>
 
         {/* Visualization */}
         {(status === FetchStatus.LOADING || options.length > 0) && (
-            <section>
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {status === FetchStatus.LOADING ? (
                     <ChartSkeleton />
                 ) : (
@@ -649,12 +601,15 @@ export default function App() {
         )}
 
         {/* Data Table */}
-        <section>
+        <section className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-xl font-bold text-white">期权链详情 (Option Chain)</h3>
+                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <TrendUp size={24} className="text-emerald-500"/>
+                    期权链分析 (Analysis)
+                 </h3>
                  {status !== FetchStatus.LOADING && options.length > 0 && (
-                     <span className="text-sm text-emerald-400 bg-emerald-900/20 px-3 py-1 rounded-full border border-emerald-900/50">
-                         找到 {options.length} 个合约
+                     <span className="text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1 rounded-full border border-emerald-900/50">
+                         {options.length} Contracts Loaded
                      </span>
                  )}
             </div>
@@ -688,9 +643,9 @@ export default function App() {
                         <tr>
                             <th className="p-2">Strike</th>
                             <th className="p-2">Premium</th>
-                            <th className="p-2 text-blue-400">Delta (Greeks)</th>
-                            <th className="p-2 text-purple-400">IV (Vol)</th>
-                            <th className="p-2 text-emerald-400">Calc WinRate</th>
+                            <th className="p-2 text-blue-400">Delta</th>
+                            <th className="p-2 text-purple-400">IV</th>
+                            <th className="p-2 text-emerald-400">WinRate</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -699,10 +654,10 @@ export default function App() {
                                 <td className="p-2">${o.strike.toFixed(2)}</td>
                                 <td className="p-2">${o.premium.toFixed(2)}</td>
                                 <td className="p-2 text-blue-300">
-                                    {(o as any).delta !== undefined ? (o as any).delta : <span className="text-slate-600">undefined</span>}
+                                    {(o as any).delta !== undefined ? (o as any).delta : '-'}
                                 </td>
                                 <td className="p-2 text-purple-300">
-                                    {(o as any).iv !== undefined ? (o as any).iv : <span className="text-slate-600">undefined</span>}
+                                    {(o as any).iv !== undefined ? (o as any).iv : '-'}
                                 </td>
                                 <td className="p-2 text-emerald-300">
                                     {o.winRate !== undefined ? `${o.winRate.toFixed(2)}%` : 'N/A'}
@@ -713,13 +668,50 @@ export default function App() {
                 </table>
             </section>
         )}
+        
+        {/* Source Footer */}
+        {sources.length > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-2 text-xs text-slate-500 border-t border-slate-800 pt-4">
+                <div className="flex flex-wrap gap-2 items-center">
+                    <p className="font-semibold flex items-center gap-1">
+                        <LinkIcon size={12} /> Data Sources:
+                    </p>
+                    {getSourceBadge()}
+                    {sources.map((s, i) => (
+                    <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" 
+                        className="hover:text-blue-400 hover:underline truncate max-w-[200px]">
+                        {s.title || "Web Result"}
+                    </a>
+                    ))}
+                </div>
+                <button 
+                    onClick={() => setShowDebug(!showDebug)}
+                    className="hover:text-slate-300 flex items-center gap-1"
+                >
+                    <Bug size={12}/> Debug Mode
+                </button>
+            </div>
+        )}
 
       </main>
 
-      <footer className="border-t border-slate-900 mt-12 py-8 bg-slate-950">
-          <div className="max-w-7xl mx-auto px-4 text-center text-slate-600 text-xs">
-              <p className="mb-2">免责声明：本应用仅供信息参考和教育目的，不构成投资建议。</p>
-              <p>期权交易涉及重大风险。年化收益率计算假设期权到期归零，并未包含交易佣金、税费或保证金要求。AI 搜索提供的数据可能存在延迟或误差。</p>
+      <footer className="border-t border-slate-900 mt-12 py-10 bg-slate-950">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+              <div className="flex justify-center gap-4 mb-4">
+                  <div className="h-8 w-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-600"><Coins size={16}/></div>
+                  <div className="h-8 w-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-600"><TrendUp size={16}/></div>
+              </div>
+              <p className="text-slate-500 text-sm mb-2">
+                  <strong>QQQ Yield Hunter</strong> - 您的美股期权卖方策略助手
+              </p>
+              <p className="text-slate-600 text-xs max-w-2xl mx-auto leading-relaxed">
+                  免责声明：本应用仅供信息参考和教育目的，不构成任何投资建议。
+                  期权交易涉及重大风险，可能导致部分或全部资金损失。年化收益率计算基于理论模型，未包含佣金、滑点或税务影响。
+                  请在交易前咨询专业财务顾问。
+              </p>
+              <div className="mt-6 text-[10px] text-slate-700 font-mono">
+                  v1.5.0 • Powered by React, Recharts & Google Gemini
+              </div>
           </div>
       </footer>
     </div>
