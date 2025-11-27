@@ -11,7 +11,7 @@ import {
   Legend,
   Cell
 } from 'recharts';
-import { OptionRow } from '../types';
+import { OptionRow } from '../types.ts';
 
 interface YieldChartProps {
   data: OptionRow[];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { VolatilityMetrics } from '../types';
+import { VolatilityMetrics } from '../types.ts';
 import { Gauge, Info, ArrowUpRight, ArrowDownRight, Minus } from '@phosphor-icons/react';
 
 interface VolatilityCardProps {

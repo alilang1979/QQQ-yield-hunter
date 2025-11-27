@@ -1,5 +1,5 @@
-import { GeminiResponseData } from "../types";
-import { calculateDynamicTargets } from "../utils/calculations";
+import { GeminiResponseData } from "../types.ts";
+import { calculateDynamicTargets } from "../utils/calculations.ts";
 
 const BASE_URL = "https://api.polygon.io";
 

@@ -1,4 +1,4 @@
-import { OptionRow } from '../types';
+import { OptionRow } from '../types.ts';
 
 export const calculateOptionMetrics = (
   strike: number,

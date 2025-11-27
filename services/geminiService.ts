@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
-import { GeminiResponseData, VolatilityMetrics } from "../types";
-import { getTargetStrikes, getIVStatus, calculateIVRank } from "../utils/calculations";
+import { GeminiResponseData, VolatilityMetrics } from "../types.ts";
+import { getTargetStrikes, getIVStatus, calculateIVRank } from "../utils/calculations.ts";
 
 // Helper to extract JSON
 const extractJson = (text: string): any => {

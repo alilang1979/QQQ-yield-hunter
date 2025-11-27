@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { fetchMarketData, fetchVolatilityData } from './services/geminiService';
-import { fetchPolygonData, validateApiKey } from './services/polygonService';
-import { OptionRow, FetchStatus, VolatilityMetrics } from './types';
-import { calculateOptionMetrics, formatCurrency, getNextFriday } from './utils/calculations';
-import { OptionTable } from './components/OptionTable';
-import { YieldChart } from './components/YieldChart';
-import { VolatilityCard } from './components/VolatilityCard';
+import { fetchMarketData, fetchVolatilityData } from './services/geminiService.ts';
+import { fetchPolygonData, validateApiKey } from './services/polygonService.ts';
+import { OptionRow, FetchStatus, VolatilityMetrics } from './types.ts';
+import { calculateOptionMetrics, formatCurrency, getNextFriday } from './utils/calculations.ts';
+import { OptionTable } from './components/OptionTable.tsx';
+import { YieldChart } from './components/YieldChart.tsx';
+import { VolatilityCard } from './components/VolatilityCard.tsx';
 import { 
   CircleNotch, 
   Plus, 

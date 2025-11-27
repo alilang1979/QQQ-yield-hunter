@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { OptionRow } from '../types';
-import { formatCurrency, calculateOptionMetrics } from '../utils/calculations';
+import { OptionRow } from '../types.ts';
+import { formatCurrency, calculateOptionMetrics } from '../utils/calculations.ts';
 import { Info, Warning } from '@phosphor-icons/react';
 
 interface OptionTableProps {

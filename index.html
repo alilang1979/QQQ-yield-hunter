@@ -4,11 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QQQ Yield Hunter</title>
+    <link rel="icon" href="data:,">
     
-    <!-- 
-      注意: tailwindcss CDN 在控制台会有 "should not be used in production" 的警告。
-      在无构建步骤(No-Build)的静态架构中，这是预期的且是必须的。它在 GitHub Pages 上可以正常工作。
-    -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -27,47 +25,156 @@
     </script>
 
     <style>
-      /* Custom scrollbar for a sleek financial app look */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #0f172a; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #475569; 
-      }
-      body {
-        background-color: #020617; /* Slate 950 */
-        color: #e2e8f0;
-      }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: #0f172a; }
+      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #475569; }
+      body { background-color: #020617; color: #e2e8f0; }
     </style>
     
-    <!-- 
-      切换到公共 CDN (esm.sh) 以支持 GitHub Pages 部署。
-      之前的 aistudiocdn 可能只能在编辑器内部访问。
-    -->
     <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "recharts": "https://esm.sh/recharts@2.12.2?external=react,react-dom",
     "@google/genai": "https://esm.sh/@google/genai@0.1.1",
     "@phosphor-icons/react": "https://esm.sh/@phosphor-icons/react@2.0.15?external=react,react-dom",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>
+    
+    <!-- Babel for on-the-fly TSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    
+    <!-- Application Loader -->
+    <script>
+      (async function() {
+        const moduleCache = new Map();
+        
+        // 1. Wait for Babel to be available
+        async function ensureBabel() {
+            if (window.Babel) return;
+            return new Promise((resolve, reject) => {
+                let count = 0;
+                const interval = setInterval(() => {
+                    if (window.Babel) {
+                        clearInterval(interval);
+                        resolve();
+                    }
+                    if (count++ > 100) { // 5 seconds
+                        clearInterval(interval);
+                        reject(new Error("Timeout waiting for Babel to load"));
+                    }
+                }, 50);
+            });
+        }
+
+        // 2. Fetch with Retry & Cache Busting
+        async function fetchWithRetry(url, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    // cache: 'reload' forces the browser to check the network
+                    const res = await fetch(url, { cache: 'reload' });
+                    if (res.ok) return res;
+                    if (res.status === 404) throw new Error(`File not found (404)`);
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                    await new Promise(r => setTimeout(r, 500)); // Wait before retry
+                }
+            }
+            throw new Error("Max retries exceeded");
+        }
+
+        // 3. Module Loader
+        async function loadModule(url, base = document.baseURI) {
+            // Normalize URL
+            const absoluteUrl = new URL(url, base).href;
+            
+            if (moduleCache.has(absoluteUrl)) {
+                return moduleCache.get(absoluteUrl);
+            }
+
+            const loadPromise = (async () => {
+                try {
+                    const res = await fetchWithRetry(absoluteUrl);
+                    const source = await res.text();
+                    
+                    // Regex to find relative imports: import ... from "./..."
+                    const importRegex = /(?:import|export)\s+(?:[\s\S]*?from\s+)?['"](\.[^'"]+)['"]/g;
+                    
+                    let match;
+                    const dependencies = new Set();
+                    while ((match = importRegex.exec(source)) !== null) {
+                        dependencies.add(match[1]);
+                    }
+
+                    // Recursively load dependencies
+                    const depMap = new Map();
+                    await Promise.all(Array.from(dependencies).map(async (depPath) => {
+                        const blobUrl = await loadModule(depPath, absoluteUrl);
+                        depMap.set(depPath, blobUrl);
+                    }));
+
+                    // Replace relative paths with Blob URLs
+                    let transpiledCode = source;
+                    depMap.forEach((blobUrl, depPath) => {
+                         const escaped = depPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                         const re = new RegExp(`(['"])${escaped}(['"])`, 'g');
+                         transpiledCode = transpiledCode.replace(re, `$1${blobUrl}$2`);
+                    });
+
+                    // Transpile with Babel
+                    const { code } = Babel.transform(transpiledCode, {
+                        presets: ['react', 'typescript'],
+                        filename: absoluteUrl,
+                    });
+
+                    const blob = new Blob([code], { type: 'application/javascript' });
+                    return URL.createObjectURL(blob);
+
+                } catch (err) {
+                    console.error(`Failed to load ${url} (resolved: ${absoluteUrl})`, err);
+                    throw new Error(`Failed to load ${url}: ${err.message}`);
+                }
+            })();
+
+            moduleCache.set(absoluteUrl, loadPromise);
+            return loadPromise;
+        }
+
+        // 4. Start Application
+        try {
+            console.log("Starting App Loader...");
+            await ensureBabel();
+            // Force start from ./index.tsx relative to current page
+            const entryBlob = await loadModule('./index.tsx', window.location.href);
+            await import(entryBlob);
+            console.log("App mounted successfully.");
+        } catch (e) {
+            console.error("Critical Error:", e);
+            document.body.innerHTML = `
+                <div style="background:#0f172a;color:#ef4444;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;padding:20px;">
+                    <div style="max-width:600px;width:100%;padding:2rem;background:#1e293b;border-radius:0.5rem;border:1px solid #dc2626;">
+                        <h2 style="margin-top:0;font-size:1.5rem;margin-bottom:1rem;">Application Failed to Load</h2>
+                        <div style="background:#000;padding:1rem;border-radius:0.25rem;overflow-x:auto;margin-bottom:1rem;">
+                            <code style="color:#f87171;font-family:monospace;">${e.message}</code>
+                        </div>
+                        <p style="color:#94a3b8;font-size:0.9rem;">
+                           Make sure all files (index.tsx, App.tsx, etc.) are in the correct location and accessible.
+                           Check the browser console (F12) for detailed network errors.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+      })();
+    </script>
   </body>
 </html>
